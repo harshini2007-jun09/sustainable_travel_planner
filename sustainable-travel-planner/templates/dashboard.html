@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Dashboard — Sustainable Travel Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="dashboard-page">
+
+  <!-- Top navigation -->
+  <nav class="dash-nav">
+    <a href="/" class="nav-logo">🌍 EcoTravel</a>
+    <div class="nav-route" id="navRoute">Loading...</div>
+    <a href="/" class="nav-back">← New Trip</a>
+  </nav>
+
+  <!-- Loading state -->
+  <div class="dash-loading" id="dashLoading">
+    <div class="loading-orb"></div>
+    <p>Calculating your eco travel options...</p>
+  </div>
+
+  <!-- Constraint warning banner -->
+  <div class="constraint-banner" id="constraintBanner" style="display:none">
+    <span>⚠️</span>
+    <span id="constraintText"></span>
+  </div>
+
+  <!-- Dashboard grid -->
+  <main class="dash-main" id="dashMain" style="display:none">
+
+    <!-- ── A. Travel Options Panel ────────────────────── -->
+    <section class="dash-section options-section">
+      <div class="section-header">
+        <h2>🚦 Travel Options</h2>
+        <span class="section-meta" id="routeMeta"></span>
+      </div>
+      <div class="options-grid" id="optionsGrid">
+        <!-- Cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- ── B. Comparison Charts ───────────────────────── -->
+    <section class="dash-section chart-section">
+      <div class="section-header">
+        <h2>📊 Side-by-Side Comparison</h2>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h4>💰 Cost (USD)</h4>
+          <canvas id="chartCost"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>⏱ Travel Time (hours)</h4>
+          <canvas id="chartTime"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>🌿 Carbon Emissions (kg CO₂)</h4>
+          <canvas id="chartCo2"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── C. Smart Recommendation ───────────────────── -->
+    <section class="dash-section recommendation-section" id="recSection">
+      <div class="section-header">
+        <h2>🌱 Smart Recommendation</h2>
+      </div>
+      <div class="rec-card" id="recCard">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- ── D. Alternatives ────────────────────────────── -->
+    <section class="dash-section alt-section" id="altSection">
+      <div class="section-header">
+        <h2>🔄 Greener Alternatives</h2>
+      </div>
+      <div class="alt-list" id="altList">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- ── F. Trip Summary Widget ────────────────────── -->
+    <section class="dash-section summary-section">
+      <div class="section-header">
+        <h2>🧾 Trip Summary</h2>
+      </div>
+      <div class="summary-grid" id="summaryGrid">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+    <!-- ── G. Eco Add-ons ─────────────────────────────── -->
+    <section class="dash-section addons-section">
+      <div class="section-header">
+        <h2>🌍 Sustainable Travel Add-ons</h2>
+        <span class="section-meta" id="addonsDestLabel"></span>
+      </div>
+      <div class="addons-grid" id="addonsGrid">
+        <!-- Injected by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Selected option floating bar -->
+  <div class="selected-bar" id="selectedBar" style="display:none">
+    <span id="selectedBarText">No option selected</span>
+    <button class="btn-confirm" onclick="confirmSelection()">Confirm Trip ✓</button>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

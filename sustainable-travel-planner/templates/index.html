@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sustainable Travel Planner 🌍</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css" />
+</head>
+<body class="home-page">
+
+  <!-- Animated background particles -->
+  <div class="bg-canvas" id="bgCanvas"></div>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-badge">🌱 Carbon-Conscious Travel</div>
+    <h1 class="hero-title">
+      Travel <em>Smarter</em>,<br/>Live <em>Greener</em>
+    </h1>
+    <p class="hero-sub">
+      Compare flights, trains, buses and more — weighted by cost,<br>
+      time, and carbon footprint. Make the choice that matters.
+    </p>
+
+    <!-- Stats row -->
+    <div class="hero-stats">
+      <div class="stat-pill">
+        <span class="stat-num">4</span>
+        <span class="stat-label">Transport Modes</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-num">CO₂</span>
+        <span class="stat-label">Emissions Tracked</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-num">🌍</span>
+        <span class="stat-label">Eco Alternatives</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Form Card -->
+  <main class="form-section">
+    <div class="form-card" id="planForm">
+      <div class="form-card-header">
+        <h2>Plan Your Trip</h2>
+        <p>Fill in your travel details below</p>
+      </div>
+
+      <!-- Error message -->
+      <div class="form-error" id="formError" style="display:none"></div>
+
+      <div class="form-grid">
+
+        <!-- Source -->
+        <div class="field-group">
+          <label for="source">
+            <span class="field-icon">📍</span> From
+          </label>
+          <input type="text" id="source" placeholder="e.g. Mumbai" autocomplete="off" list="cities-list" />
+        </div>
+
+        <!-- Destination -->
+        <div class="field-group">
+          <label for="destination">
+            <span class="field-icon">🏁</span> To
+          </label>
+          <input type="text" id="destination" placeholder="e.g. Delhi" autocomplete="off" list="cities-list" />
+        </div>
+
+        <!-- Date -->
+        <div class="field-group">
+          <label for="travelDate">
+            <span class="field-icon">📅</span> Travel Date
+          </label>
+          <input type="date" id="travelDate" />
+        </div>
+
+        <!-- Arrival time -->
+        <div class="field-group">
+          <label for="arrivalTime">
+            <span class="field-icon">⏰</span> Required Arrival By
+            <span class="optional-tag">optional</span>
+          </label>
+          <input type="time" id="arrivalTime" />
+        </div>
+
+      </div>
+
+      <!-- Preference selector -->
+      <div class="pref-section">
+        <label class="pref-label">
+          <span class="field-icon">🎯</span> Optimise for
+        </label>
+        <div class="pref-grid">
+          <label class="pref-card active" data-value="eco">
+            <input type="radio" name="preference" value="eco" checked hidden />
+            <span class="pref-icon">🌿</span>
+            <span class="pref-name">Eco-Friendly</span>
+            <span class="pref-desc">Lowest carbon</span>
+          </label>
+          <label class="pref-card" data-value="fastest">
+            <input type="radio" name="preference" value="fastest" hidden />
+            <span class="pref-icon">⚡</span>
+            <span class="pref-name">Fastest</span>
+            <span class="pref-desc">Least travel time</span>
+          </label>
+          <label class="pref-card" data-value="cheapest">
+            <input type="radio" name="preference" value="cheapest" hidden />
+            <span class="pref-icon">💰</span>
+            <span class="pref-name">Cheapest</span>
+            <span class="pref-desc">Lowest cost</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button class="btn-plan" id="planBtn" onclick="submitForm()">
+        <span class="btn-text">Plan My Trip 🌍</span>
+        <span class="btn-loader" style="display:none">
+          <span class="spinner"></span> Calculating...
+        </span>
+      </button>
+    </div>
+
+    <!-- How it works -->
+    <div class="how-it-works">
+      <h3>How It Works</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <p>Enter your route & preferences</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <p>We calculate CO₂, cost & time</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <p>Pick the greenest path forward</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Cities datalist -->
+  <datalist id="cities-list">
+    <option value="Mumbai"><option value="Delhi"><option value="Bangalore">
+    <option value="Chennai"><option value="Hyderabad"><option value="Kolkata">
+    <option value="Pune"><option value="Ahmedabad"><option value="Jaipur">
+    <option value="Goa"><option value="London"><option value="Paris">
+    <option value="New York"><option value="Tokyo"><option value="Dubai">
+    <option value="Singapore"><option value="Sydney"><option value="Berlin">
+    <option value="Rome"><option value="Barcelona"><option value="Amsterdam">
+    <option value="Bangkok"><option value="Toronto"><option value="Los Angeles">
+    <option value="Chicago"><option value="San Francisco">
+  </datalist>
+
+  <script src="/static/js/home.js"></script>
+</body>
+</html>
