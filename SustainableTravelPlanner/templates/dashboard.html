@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Travel Plan Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero-card compact dashboard-top">
+        <div>
+          <p class="eyebrow">Sustainable Travel Planner</p>
+          <h1>Eco Dashboard</h1>
+        </div>
+        <a class="link btn-ghost" href="{{ url_for('home') }}">Plan another trip</a>
+      </header>
+
+      <section class="panel route-summary">
+        <p>
+          Route: <strong>{{ form_data.source }}</strong> to
+          <strong>{{ form_data.destination }}</strong> on {{ form_data.travel_date }}
+          (arrival by {{ transport_plan.arrival_constraint }}).
+        </p>
+      </section>
+
+      <section class="stat-grid">
+        <article class="stat-card">
+          <h3>Total Distance</h3>
+          <p>{{ transport_plan.distance_km }} km</p>
+        </article>
+        <article class="stat-card">
+          <h3>Valid Options</h3>
+          <p>{{ transport_plan.valid_options|length }} / {{ transport_plan.all_options|length }}</p>
+        </article>
+        <article class="stat-card highlight">
+          <h3>CO2 Saved</h3>
+          <p>You saved {{ transport_plan.co2_saved }} kg CO2 🌱</p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Transport Comparison</h2>
+        <div class="mode-tabs">
+          {% for item in transport_plan.mode_summary %}
+          <button
+            type="button"
+            class="tab-btn"
+            data-mode="{{ item.mode }}"
+          >
+            {% if item.mode == 'train' %}🚆{% elif item.mode == 'flight' %}✈️{% else %}🚌{% endif %}
+            {{ item.mode|capitalize }}
+          </button>
+          {% endfor %}
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Transport Type</th>
+                <th>Best Cost</th>
+                <th>Fastest Time</th>
+                <th>Lowest CO2</th>
+                <th>Choices</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in transport_plan.mode_summary %}
+              <tr>
+                <td>{{ item.mode|capitalize }}</td>
+                <td>INR {{ item.min_cost }}</td>
+                <td>{{ item.min_duration }} min</td>
+                <td>{{ item.min_carbon }} kg</td>
+                <td>{{ item.count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Detailed Options (click transport chips)</h2>
+        <p id="detail-title">Click Train, Flight, or Bus to inspect options.</p>
+        <div class="table-wrap">
+          <table id="details-table">
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Depart</th>
+                <th>Arrive</th>
+                <th>Duration</th>
+                <th>Cost</th>
+                <th>CO2</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel success">
+        <h2>Best Eco Recommendation</h2>
+        {% if transport_plan.best_option %}
+        <p>
+          <strong>{{ transport_plan.best_option.mode|capitalize }}</strong> -
+          {{ transport_plan.best_option.service_name }} is your greenest valid choice
+          with {{ transport_plan.best_option.carbon_kg }} kg CO2.
+        </p>
+        {% else %}
+        <p>No transport recommendation found.</p>
+        {% endif %}
+        <h3>Alternative Greener Options</h3>
+        <ul>
+          {% for option in transport_plan.greener_alternatives %}
+          <li>
+            {{ option.mode|capitalize }} | {{ option.service_name }} | INR {{ option.cost }} |
+            {{ option.carbon_kg }} kg CO2
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      {% if full_trip %}
+      <section class="panel">
+        <h2>Full Trip Planner</h2>
+        <div class="grid-3">
+          <article class="inner-card">
+            <h3>Eco-Friendly Hotels</h3>
+            <ul>
+              {% for h in full_trip.hotels %}
+              <li>
+                <strong>{{ h.name }}</strong> - INR {{ h.nightly_cost }}/night (Eco score: {{ h.eco_score }})
+                <br />
+                <small>{{ h.notes }}</small>
+              </li>
+              {% else %}
+              <li>No hotel data for this destination yet.</li>
+              {% endfor %}
+            </ul>
+          </article>
+
+          <article class="inner-card">
+            <h3>Sustainable Places to Visit</h3>
+            <ul>
+              {% for p in full_trip.places %}
+              <li>
+                <strong>{{ p.place_name }}</strong> ({{ p.category }})
+                <br />
+                <small>{{ p.notes }}</small>
+              </li>
+              {% else %}
+              <li>No activity data for this destination yet.</li>
+              {% endfor %}
+            </ul>
+          </article>
+
+          <article class="inner-card">
+            <h3>Local Transport Suggestions</h3>
+            <ul>
+              {% for lt in full_trip.local_transport %}
+              <li>
+                <strong>{{ lt.mode }}</strong> - {{ lt.notes }}
+                <br />
+                <small>Emission level: {{ lt.carbon_level }}</small>
+              </li>
+              {% else %}
+              <li>No local transport data for this destination yet.</li>
+              {% endfor %}
+            </ul>
+            <p class="tip">{{ full_trip.low_traffic_route_tip }}</p>
+          </article>
+        </div>
+      </section>
+      {% endif %}
+    </main>
+
+    <script id="transport-data" type="application/json">{{ transport_plan.options_by_mode | tojson }}</script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

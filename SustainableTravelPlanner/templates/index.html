@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sustainable Travel Planner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <div class="brand">EcoTrek</div>
+      <a href="#planner-form" class="btn-nav">Plan Trip</a>
+    </header>
+
+    <section class="landing-hero">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <h1>
+          Travel the world.<br />
+          <span>Leave no trace.</span>
+        </h1>
+        <p>
+          Plan your journey with climate impact in mind. Compare greener routes,
+          eco stays, and low-emission local mobility.
+        </p>
+      </div>
+    </section>
+
+    <main class="container">
+      <section class="hero-card">
+        <h2 id="planner-form">Build Your Sustainable Plan</h2>
+        <p>Select route details, then choose transport-only or full trip mode.</p>
+
+        {% if error %}
+        <div class="alert">{{ error }}</div>
+        {% endif %}
+
+        <form action="{{ url_for('plan') }}" method="post" class="planner-form">
+          <div class="grid-2">
+            <label>
+              Source location
+              <input type="text" name="source" placeholder="e.g., Delhi" required />
+            </label>
+
+            <label>
+              Destination
+              <input type="text" name="destination" placeholder="e.g., Mumbai" required />
+            </label>
+
+            <label>
+              Travel date
+              <input type="date" name="travel_date" required />
+            </label>
+
+            <label>
+              Required arrival time
+              <input type="time" name="required_arrival" required />
+            </label>
+          </div>
+
+          <fieldset class="mode-picker">
+            <legend>Mode Selection</legend>
+            <label class="radio-card">
+              <input type="radio" name="mode" value="transport" checked />
+              <span>
+                <strong>Transport Only</strong>
+                <small>Compare train, flight, and bus options with CO2 impact.</small>
+              </span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="mode" value="full" />
+              <span>
+                <strong>Full Trip Plan</strong>
+                <small>Includes transport, eco-stays, activities, and local mobility.</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <button type="submit" class="btn-primary">Plan Trip</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
