@@ -62,7 +62,8 @@ Open your browser at **http://localhost:5000**
 ### Homepage
 - Source & destination input with city autocomplete
 - Travel date and optional arrival deadline
-- Preference selector: **Eco-Friendly** | **Fastest** | **Cheapest**
+- -transport only or full trip plan
+- 
 
 ### Dashboard
 | Section | Description |
