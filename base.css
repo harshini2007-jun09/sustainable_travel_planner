@@ -1,0 +1,495 @@
+"""
+EcoVoyage – Sustainable Travel Planner
+Full-stack Flask application with step-by-step user flow
+"""
+from flask import (Flask, render_template, request, jsonify,
+                   session, redirect, url_for, flash)
+import sqlite3, hashlib, json, math, random, os
+from datetime import datetime, timedelta
+from functools import wraps
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'ecovoyage-secret-2024')
+DB = 'ecovoyage.db'
+
+# ═══════════════════════════════════════════════════════════════════
+#  DATABASE
+# ═══════════════════════════════════════════════════════════════════
+
+def db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    c = db()
+    c.executescript('''
+        CREATE TABLE IF NOT EXISTS users (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT    NOT NULL,
+            email       TEXT    UNIQUE NOT NULL,
+            password    TEXT    NOT NULL,
+            total_co2_saved REAL DEFAULT 0,
+            eco_score   INTEGER DEFAULT 0,
+            garden_plants INTEGER DEFAULT 0,
+            created_at  TEXT    DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS transport_options (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            mode            TEXT NOT NULL,
+            service_name    TEXT NOT NULL,
+            departure_time  TEXT NOT NULL,
+            duration_hrs    REAL NOT NULL,
+            base_cost       REAL NOT NULL,
+            carbon_per_km   REAL NOT NULL,
+            rating          REAL NOT NULL,
+            review          TEXT,
+            booking_url     TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS hotels (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            cost_per_night  REAL NOT NULL,
+            eco_score       INTEGER NOT NULL,
+            rating          REAL NOT NULL,
+            location        TEXT NOT NULL,
+            description     TEXT,
+            solar_flag      INTEGER DEFAULT 0,
+            eco_certified   INTEGER DEFAULT 0,
+            review          TEXT,
+            image_url       TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS places (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT NOT NULL,
+            category    TEXT NOT NULL,
+            description TEXT,
+            review      TEXT,
+            image_url   TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS local_transport (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            mode        TEXT NOT NULL,
+            icon        TEXT NOT NULL,
+            carbon_level TEXT NOT NULL,
+            notes       TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS bookings (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER NOT NULL,
+            source          TEXT,
+            destination     TEXT,
+            transport_mode  TEXT,
+            service_name    TEXT,
+            cost            REAL,
+            co2_emitted     REAL,
+            co2_saved       REAL,
+            travel_date     TEXT,
+            booked_at       TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+    ''')
+    c.commit()
+    _seed(c)
+    c.close()
+
+def _seed(c):
+    if c.execute("SELECT COUNT(*) FROM transport_options").fetchone()[0] > 0:
+        return
+
+    # Transport options
+    transport = [
+        ('train','Rajdhani Express','06:00',8.5,  820, 0.041, 4.6,'Smooth ride, great views, very punctual.','https://irctc.co.in'),
+        ('train','Shatabdi Express','09:30',6.5, 1050, 0.041, 4.7,'Fastest train on this corridor.','https://irctc.co.in'),
+        ('train','Duronto Express', '14:00',8.0,  940, 0.041, 4.3,'Non-stop service, comfortable.','https://irctc.co.in'),
+        ('train','Jan Shatabdi',    '17:30',7.0,  640, 0.041, 4.1,'Budget-friendly, reliable.','https://irctc.co.in'),
+        ('bus',  'Volvo AC Sleeper','21:00',9.0,  580, 0.089, 4.2,'Comfortable overnight journey.','https://redbus.in'),
+        ('bus',  'Eco Green Bus',   '07:00',8.5,  440, 0.089, 4.0,'Eco-certified operator.','https://redbus.in'),
+        ('bus',  'SRS Travels',     '10:00',9.5,  510, 0.089, 3.9,'Budget option, reliable.','https://redbus.in'),
+        ('bus',  'Kesineni Travels','23:00',9.5,  570, 0.089, 4.1,'Good sleeper buses.','https://redbus.in'),
+        ('flight','IndiGo 6E-401',  '06:00',2.25,3150, 0.255, 4.0,'Punctual budget carrier.','https://makemytrip.com'),
+        ('flight','Air India AI-505','10:30',2.25,3800, 0.255, 3.8,'Full-service, meals included.','https://makemytrip.com'),
+        ('flight','SpiceJet SG-110','14:00',2.33,2900, 0.255, 3.7,'Best price on this route.','https://makemytrip.com'),
+        ('flight','Vistara UK-820', '08:00',2.25,8400, 0.255, 4.8,'Premium experience.','https://makemytrip.com'),
+    ]
+    c.executemany('''INSERT INTO transport_options
+        (mode,service_name,departure_time,duration_hrs,base_cost,carbon_per_km,rating,review,booking_url)
+        VALUES(?,?,?,?,?,?,?,?,?)''', transport)
+
+    hotels = [
+        ('Green Leaf Eco Resort',   2800,92,4.7,'City Centre',
+         'Zero-waste policy, organic gardens, solar-heated pools.',1,1,
+         'Loved the bamboo architecture!',
+         'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600'),
+        ('EcoNest Boutique Hotel',  1900,85,4.5,'Near Metro',
+         'Composting toilets, rainwater harvesting, farm-to-fork food.',0,1,
+         'Staff so knowledgeable about local eco tours.',
+         'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600'),
+        ('TreeHouse Stays',         3500,96,4.9,'Forest Reserve',
+         '100% solar powered, zero carbon footprint, breathtaking.',1,1,
+         'Life-changing experience!',
+         'https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?w=600'),
+        ('Urban Eco Hostel',         800,78,4.2,'Backpacker Hub',
+         'Solar kitchen, bike rentals, great community vibes.',0,1,
+         'Met so many eco-travellers, highly recommend!',
+         'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=600'),
+        ('Heritage Green Inn',      2200,88,4.6,'Heritage Quarter',
+         'Restored heritage property, modern eco-amenities, local organic food.',1,0,
+         'Beautiful old building with eco upgrades.',
+         'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=600'),
+    ]
+    c.executemany('''INSERT INTO hotels
+        (name,cost_per_night,eco_score,rating,location,description,solar_flag,eco_certified,review,image_url)
+        VALUES(?,?,?,?,?,?,?,?,?,?)''', hotels)
+
+    places = [
+        ('National Botanical Garden','Nature',
+         '3000+ plant species across 50 acres of landscaped gardens.',
+         'A must-visit! Amazing biodiversity.',
+         'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600'),
+        ('Eco Heritage Museum','Culture',
+         'Interactive museum on sustainable practices through the ages.',
+         'Kids loved the interactive exhibits!',
+         'https://images.unsplash.com/photo-1574068468668-a05a11f871da?w=600'),
+        ('Riverside Nature Trail','Adventure',
+         '12 km walking and cycling trail with stunning river views.',
+         'Perfect morning run, so peaceful!',
+         'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600'),
+        ('Organic Farmers Market','Food',
+         'Weekend market: 80+ vendors, zero-plastic policy.',
+         'Fresh produce at great prices!',
+         'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=600'),
+        ('Solar Energy Science Park','Education',
+         'Outdoor park demonstrating renewable energy in action.',
+         'Educational and inspiring. Free entry weekdays!',
+         'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600'),
+        ('Ancient Fort & Gardens','Heritage',
+         'UNESCO-listed fort with eco-garden restoration and city views.',
+         'Breathtaking views, brilliant garden restoration!',
+         'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=600'),
+    ]
+    c.executemany('''INSERT INTO places(name,category,description,review,image_url)
+        VALUES(?,?,?,?,?)''', places)
+
+    local_t = [
+        ('Walking',    '🚶','Zero',    'Free. Best for trips under 2 km.'),
+        ('Cycling',    '🚲','Zero',    'Rent bikes ~₹50/hr. Healthy and fun.'),
+        ('City Metro', '🚇','Very Low','Most efficient for 2–20 km. AC comfort.'),
+        ('City Bus',   '🚌','Low',     'Cheapest option, wide network.'),
+        ('E-Rickshaw', '⚡','Low',     'Electric last-mile, ~₹30–80/trip.'),
+        ('Auto (CNG)', '🛺','Medium',  'CNG-powered, widely available.'),
+    ]
+    c.executemany('''INSERT INTO local_transport(mode,icon,carbon_level,notes)
+        VALUES(?,?,?,?)''', local_t)
+
+    # Demo users
+    demo = [
+        ('Priya Sharma',   'priya@eco.com',   _hash('pass123'), 245.5, 980, 8),
+        ('Arjun Mehta',    'arjun@eco.com',   _hash('pass123'), 189.2, 756, 6),
+        ('Sam Watson',     'sam@eco.com',      _hash('pass123'), 156.8, 627, 5),
+        ('Meera Nair',     'meera@eco.com',    _hash('pass123'), 134.0, 536, 4),
+        ('Dev Patel',      'dev@eco.com',      _hash('pass123'),  98.5, 394, 3),
+    ]
+    c.executemany('''INSERT OR IGNORE INTO users(name,email,password,total_co2_saved,eco_score,garden_plants)
+        VALUES(?,?,?,?,?,?)''', demo)
+    c.commit()
+
+def _hash(p): return hashlib.sha256(p.encode()).hexdigest()
+
+def current_user():
+    uid = session.get('user_id')
+    if not uid: return None
+    c = db()
+    u = c.execute('SELECT * FROM users WHERE id=?', (uid,)).fetchone()
+    c.close()
+    return dict(u) if u else None
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('user_id'):
+            return redirect(url_for('auth'))
+        return f(*args, **kwargs)
+    return decorated
+
+# ═══════════════════════════════════════════════════════════════════
+#  GEO HELPERS
+# ═══════════════════════════════════════════════════════════════════
+
+CITIES = {
+    'mumbai':(19.076,72.877),'delhi':(28.704,77.102),'bangalore':(12.972,77.594),
+    'bengaluru':(12.972,77.594),'chennai':(13.083,80.270),'kolkata':(22.572,88.363),
+    'hyderabad':(17.385,78.487),'pune':(18.520,73.856),'ahmedabad':(23.023,72.572),
+    'jaipur':(26.913,75.787),'goa':(15.300,74.124),'kochi':(9.932,76.267),
+    'lucknow':(26.847,80.947),'surat':(21.170,72.831),'nagpur':(21.145,79.088),
+    'indore':(22.718,75.855),'bhopal':(23.259,77.413),'patna':(25.594,85.137),
+    'visakhapatnam':(17.687,83.218),'coimbatore':(11.017,76.955),
+    'mysore':(12.295,76.644),'mysuru':(12.295,76.644),
+    'london':(51.507,-0.128),'paris':(48.857,2.352),'new york':(40.713,-74.006),
+    'tokyo':(35.676,139.650),'dubai':(25.204,55.270),'singapore':(1.352,103.820),
+    'berlin':(52.520,13.405),'sydney':(-33.868,151.209),
+}
+
+def get_coords(name):
+    k = name.lower().strip()
+    for city, coords in CITIES.items():
+        if city in k or k in city:
+            return coords
+    # Deterministic fallback based on string hash
+    h = sum(ord(c) for c in k)
+    return (18 + (h % 10), 75 + (h % 12))
+
+def haversine(a, b):
+    R = 6371
+    lat1, lon1 = map(math.radians, a)
+    lat2, lon2 = map(math.radians, b)
+    dlat = lat2 - lat1; dlon = lon2 - lon1
+    x = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+    return round(R * 2 * math.asin(math.sqrt(x)), 1)
+
+def calc_distance(src, dst):
+    return haversine(get_coords(src), get_coords(dst))
+
+# ═══════════════════════════════════════════════════════════════════
+#  RECOMMENDATION ENGINE
+# ═══════════════════════════════════════════════════════════════════
+
+def build_options(distance, required_arrival_time):
+    c = db()
+    rows = c.execute('SELECT * FROM transport_options').fetchall()
+    c.close()
+
+    options = []
+    for r in rows:
+        r = dict(r)
+        # Compute arrival time
+        dep_h, dep_m = map(int, r['departure_time'].split(':'))
+        dep_mins = dep_h * 60 + dep_m
+        arr_mins = dep_mins + int(r['duration_hrs'] * 60)
+        arr_h = (arr_mins // 60) % 24
+        arr_m = arr_mins % 60
+        arrival_time = f"{arr_h:02d}:{arr_m:02d}"
+
+        co2 = round(r['carbon_per_km'] * distance, 2)
+        cost = round(r['base_cost'] + distance * 0.5, 0)  # scale with distance
+
+        # Valid check
+        if required_arrival_time:
+            req_h, req_m = map(int, required_arrival_time.split(':'))
+            valid = (arr_h * 60 + arr_m) <= (req_h * 60 + req_m)
+        else:
+            valid = True
+
+        options.append({
+            **r,
+            'arrival_time': arrival_time,
+            'total_cost':   cost,
+            'total_co2':    co2,
+            'is_valid':     valid,
+            'distance':     distance,
+        })
+    return options
+
+def recommend(options):
+    valid = [o for o in options if o['is_valid']] or options
+
+    # Normalise scores (0–1, lower = better for cost/co2/duration)
+    def norm(lst):
+        mn, mx = min(lst), max(lst)
+        return [(v - mn) / (mx - mn + 1e-9) for v in lst]
+
+    co2s   = norm([o['total_co2']   for o in valid])
+    costs  = norm([o['total_cost']  for o in valid])
+    durs   = norm([o['duration_hrs'] for o in valid])
+
+    scored = []
+    for i, o in enumerate(valid):
+        score = co2s[i]*0.5 + costs[i]*0.25 + durs[i]*0.25
+        scored.append((score, o))
+
+    scored.sort(key=lambda x: x[0])
+    best_overall = scored[0][1]['id']
+    greenest     = min(valid, key=lambda o: o['total_co2'])['id']
+    cheapest     = min(valid, key=lambda o: o['total_cost'])['id']
+    fastest      = min(valid, key=lambda o: o['duration_hrs'])['id']
+
+    tags = {best_overall: '🌟 Recommended', greenest: '🌱 Greenest',
+            cheapest: '💰 Cheapest', fastest: '⚡ Fastest'}
+
+    for o in options:
+        o['tags'] = tags.get(o['id'], '')
+
+    return options, {'best': best_overall, 'greenest': greenest,
+                     'cheapest': cheapest, 'fastest': fastest}
+
+# ═══════════════════════════════════════════════════════════════════
+#  ROUTES
+# ═══════════════════════════════════════════════════════════════════
+
+@app.route('/')
+def root():
+    if session.get('user_id'):
+        return redirect(url_for('plan'))
+    return redirect(url_for('auth'))
+
+# ── AUTH ──────────────────────────────────────────────────────────
+@app.route('/auth')
+def auth():
+    if session.get('user_id'):
+        return redirect(url_for('plan'))
+    return render_template('auth.html')
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    d = request.get_json()
+    c = db()
+    u = c.execute('SELECT * FROM users WHERE email=? AND password=?',
+                  (d['email'].strip(), _hash(d['password']))).fetchone()
+    c.close()
+    if u:
+        session['user_id'] = u['id']
+        return jsonify({'ok': True, 'name': u['name']})
+    return jsonify({'ok': False, 'error': 'Invalid email or password'})
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    d = request.get_json()
+    try:
+        c = db()
+        c.execute('INSERT INTO users(name,email,password) VALUES(?,?,?)',
+                  (d['name'].strip(), d['email'].strip(), _hash(d['password'])))
+        c.commit()
+        uid = c.execute('SELECT id FROM users WHERE email=?',
+                        (d['email'].strip(),)).fetchone()['id']
+        c.close()
+        session['user_id'] = uid
+        return jsonify({'ok': True, 'name': d['name']})
+    except sqlite3.IntegrityError:
+        return jsonify({'ok': False, 'error': 'Email already registered'})
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('auth'))
+
+# ── PLAN FORM ─────────────────────────────────────────────────────
+@app.route('/plan')
+@login_required
+def plan():
+    user = current_user()
+    return render_template('plan.html', user=user)
+
+# ── DASHBOARD ─────────────────────────────────────────────────────
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    user = current_user()
+    return render_template('dashboard.html', user=user)
+
+# ── API: PROCESS TRIP ─────────────────────────────────────────────
+@app.route('/api/process', methods=['POST'])
+@login_required
+def api_process():
+    d = request.get_json()
+    src, dst = d['source'].strip(), d['destination'].strip()
+    mode = d.get('mode', 'transport')
+    arr_time = d.get('arrival_time', '')
+
+    distance = calc_distance(src, dst)
+    options, recs = recommend(build_options(distance, arr_time))
+
+    # Summary stats
+    flight_co2 = round(0.255 * distance, 1)
+    train_co2  = round(0.041 * distance, 1)
+    co2_saved  = round(flight_co2 - train_co2, 1)
+    valid_count = sum(1 for o in options if o['is_valid'])
+
+    result = {
+        'source': src, 'destination': dst, 'mode': mode,
+        'distance': distance, 'options': options,
+        'recommendations': recs,
+        'summary': {
+            'distance': distance,
+            'valid_options': valid_count,
+            'co2_saved_vs_flight': co2_saved,
+            'flight_co2': flight_co2,
+            'train_co2': train_co2,
+        },
+    }
+
+    if mode == 'full':
+        c = db()
+        hotels = [dict(h) for h in c.execute('SELECT * FROM hotels').fetchall()]
+        places = [dict(p) for p in c.execute('SELECT * FROM places').fetchall()]
+        local  = [dict(l) for l in c.execute('SELECT * FROM local_transport').fetchall()]
+        c.close()
+        result['hotels'] = hotels
+        result['places'] = places
+        result['local_transport'] = local
+
+    # Store in session for dashboard
+    session['trip'] = result
+    return jsonify({'ok': True})
+
+@app.route('/api/trip')
+@login_required
+def api_trip():
+    return jsonify(session.get('trip', {}))
+
+# ── API: BOOK ─────────────────────────────────────────────────────
+@app.route('/api/book', methods=['POST'])
+@login_required
+def api_book():
+    d = request.get_json()
+    uid = session['user_id']
+    co2_saved = max(0, float(d.get('co2_saved', 0)))
+    score_gain = int(co2_saved * 4)
+
+    c = db()
+    c.execute('''INSERT INTO bookings
+        (user_id,source,destination,transport_mode,service_name,cost,co2_emitted,co2_saved,travel_date)
+        VALUES(?,?,?,?,?,?,?,?,?)''', (
+        uid, d.get('source'), d.get('destination'),
+        d.get('mode'), d.get('service_name'),
+        d.get('cost'), d.get('co2'), co2_saved, d.get('date')))
+    if co2_saved > 0:
+        c.execute('''UPDATE users SET
+            total_co2_saved = total_co2_saved + ?,
+            eco_score = eco_score + ?,
+            garden_plants = garden_plants + 1
+            WHERE id=?''', (co2_saved, score_gain, uid))
+    c.commit()
+    c.close()
+    return jsonify({'ok': True, 'co2_saved': co2_saved, 'score_gain': score_gain})
+
+# ── API: USER ──────────────────────────────────────────────────────
+@app.route('/api/me')
+@login_required
+def api_me():
+    return jsonify(current_user())
+
+# ── API: LEADERBOARD ──────────────────────────────────────────────
+@app.route('/api/leaderboard')
+@login_required
+def api_leaderboard():
+    uid = session['user_id']
+    c = db()
+    rows = c.execute('''SELECT id,name,total_co2_saved,eco_score,garden_plants
+                        FROM users ORDER BY total_co2_saved DESC LIMIT 20''').fetchall()
+    c.close()
+    board = []
+    for i, r in enumerate(rows):
+        u = dict(r)
+        u['rank'] = i + 1
+        u['is_me'] = (u['id'] == uid)
+        board.append(u)
+    return jsonify(board)
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True, port=5050)

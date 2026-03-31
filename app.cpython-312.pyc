@@ -1,0 +1,78 @@
+# 🌍 EcoVoyage – Sustainable Travel Planner v2
+
+A structured, step-by-step full-stack Flask application for sustainable travel planning.
+
+## 🚀 Quick Start
+
+```bash
+pip install -r requirements.txt
+python app.py
+# Open http://localhost:5050
+```
+
+## 🔐 Demo Accounts (password: pass123)
+
+| Name | Email |
+|---|---|
+| Priya Sharma | priya@eco.com |
+| Arjun Mehta | arjun@eco.com |
+| Sam Watson | sam@eco.com |
+
+## 🗺️ Workflow (Step by Step)
+
+```
+1. /auth       → Login or Register (no trip form shown yet)
+2. /plan       → Trip form (source, dest, dates, time, mode)
+3. /api/process → Backend: distance + transport + recommendation engine
+4. /dashboard  → Full dashboard with all 13 features
+```
+
+## ✅ Features
+
+**Step 1 – Auth**: Login/Register, SQLite storage, hashed passwords, demo accounts
+
+**Step 2 – Plan**: Source/destination, departure/arrival dates, arrival time, Transport Only / Full Trip mode
+
+**Step 3 – Backend**: Haversine distance, transport DB query, CO₂ = distance × carbon_per_km, arrival time check
+
+**Step 4 – Recommendation Engine**: Scores each option on CO₂ (50%) + cost (25%) + duration (25%). Identifies Best Overall 🌟, Greenest 🌱, Cheapest 💰, Fastest ⚡
+
+**Step 5 – Dashboard**: Summary cards, recommendation banner, filterable overview table
+
+**Step 6 – Visual Feedback**: Animated eco tree + CO₂ savings bar per selection
+
+**Step 7 – Charts**: Bar chart, doughnut pie chart, line chart (Chart.js)
+
+**Step 8 – Eco Feedback**: CO₂ saved in kg + tree equivalents, forecast for 1,000 users
+
+**Step 9 – Carbon Forecast**: "If 1,000 users choose this → X kg saved"
+
+**Step 10 – Full Trip Mode**: Eco hotels (with solar/eco badges, images, reviews), Places & Activities, Local Transport options
+
+**Step 11 – Booking**: Simulated confirmation modal + confetti
+
+**Step 12 – User Tracking**: Updates total_co2_saved, eco_score, garden_plants in DB
+
+**Step 13 – Leaderboard**: Top 20 users ranked by CO₂ saved, current user highlighted
+
+## 🗂️ Structure
+
+```
+ecovoyage/
+├── app.py                  # Flask backend + recommendation engine
+├── ecovoyage.db            # Auto-created SQLite database
+├── requirements.txt
+├── templates/
+│   ├── auth.html           # Step 1: Login / Register
+│   ├── plan.html           # Step 2: Trip Planning Form
+│   └── dashboard.html      # Steps 3–13: Full dashboard
+└── static/
+    └── css/base.css        # Global design system
+```
+
+## 🎨 Design
+
+- **Font**: Cormorant Garamond (display) + Instrument Sans (body)
+- **Palette**: Deep forest greens, cream, parchment, amber accents
+- **Aesthetic**: Organic Luxury × Editorial
+- **Animations**: CSS-only ambient orbs, floating particles, garden growth
